@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>指令生成器</title>
+    <!-- Include Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+    <style>
+        body {
+            background-image: url("https://wallpapercave.com/wp/wp11812656.jpg");
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+        }
+
+        .container {
+            background-color: rgba(255, 255, 255, 0.5); /* 更亮的背景色 */
+            padding: 20px;
+            border-radius: 10px;
+    	    margin: 100px auto; /* 上下置中，左右自動 */
+    	    max-width: 1200px; /* 可以根據需要調整最大寬度 */
+            margin-top: 50px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .command-generator {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .form-container {
+            flex: 1;
+            margin: 0 20px;
+            max-width: 500px;
+        }
+
+        h2 {
+            color: #333;
+        }
+
+        .form-label {
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        #preview,
+        #generated_command {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ced4da;
+            white-space: pre-wrap;
+	    color: #333;
+            cursor: pointer;
+        }
+
+        .form-control,
+        .form-select {
+            background-color: #ffffff;
+            border: 1px solid #ced4da;
+        }
+
+        .btn {
+            margin-right: 10px;
+        }
+
+        .form-group {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            flex: 0 0 150px;
+            margin-right: 10px;
+        }
+
+        .form-group .form-control,
+        .form-group .form-select {
+            flex: 1;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container mt-5 command-generator">
+        <div class="form-container">
+            <h2 class="mb-4">/titleraw & tellraw 指令生成器</h2>
+            <div class="mb-3 form-group">
+                <label class="form-label">目標選擇器:</label>
+                <select class="form-select" id="selector">
+                    <option value="@a">所有玩家 (@a)</option>
+                    <option value="@p">最近的玩家 (@p)</option>
+                    <option value="@r">隨機玩家 (@r)</option>
+                    <option value="@s">自己 (@s)</option>
+                </select>
+            </div>
+            <div class="mb-3 form-group">
+                <label class="form-label">類型:</label>
+                <select class="form-select" id="type">
+                    <option value=""></option>
+                    <option value="title">title</option>
+                    <option value="subtitle">subtitle</option>
+                    <option value="actionbar">actionbar</option>
+                </select>
+            </div>
+            <div class="mb-3 form-group">
+                <label class="form-label">元素:</label>
+                <input type="text" class="form-control" id="show-element" placeholder='{"translate":"(內容)", "with":[(內容)]}'>
+            </div>
+            <div class="mb-3 form-group">
+                <label class="form-label">範例:</label>
+                <select class="form-select" id="example-select" onchange="loadExample()">
+                    <option value="">-- Select Example --</option>
+                    <option value='{"translate":"(內容)", "with":[(內容)]}'>{"translate":"(內容)", "with":[(內容)]}</option>
+                    <option value='{"with":[(內容)], "translate":"(內容)"}'>{"with":[(內容)], "translate":"(內容)"}</option>
+                    <option value='{"translate":"(內容)", "with":{ "rawtext": [] }}'>{"translate":"(內容)", "with":{ "rawtext": [] }}</option>
+                    <option value='{"with":{ "rawtext": [] }, "translate":"(內容)"}'>{"with":{ "rawtext": [] }, "translate":"(內容)"}</option>
+                    <option value='{"text":"在這裡輸入文字"}'>{"text":"在這裡輸入文字"}</option>
+                    <option value='{"score":{"name":"@a/@p/@s/@r/*","objective":"記分板項"}}'>{"score":{"name":"@a/@p/@s/@r/*","objective":"記分板項"}}</option>
+                    <option value='{"selector":"@a/@p/@s/@r"}'>{"selector":"@a/@p/@s/@r"}</option>
+                </select>
+            </div>
+            <div>
+                <button type="button" class="btn btn-primary" onclick="generateCommand()">生成指令</button>
+                <button type="button" class="btn btn-secondary" onclick="clearFields()">清除</button>
+            </div>
+            <div class="mt-3">
+                <label class="form-label">預覽 (點擊複製):</label>
+                <pre id="preview" onclick="copyToClipboard()"></pre>
+            </div>
+        </div>
+
+        <div class="form-container">
+            <h2 class="mb-4">/Give 指令生成器</h2>
+            <form>
+                <div class="form-group">
+                    <label for="target_selector">目標選擇器：</label>
+                    <select id="target_selector" name="target_selector" class="form-select">
+                        <option value="@a">所有玩家 (@a)</option>
+                        <option value="@p">最近的玩家 (@p)</option>
+                        <option value="@r">隨機玩家 (@r)</option>
+                        <option value="@s">自己 (@s)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="item_id">物品ID：</label>
+                    <input type="text" id="item_id" name="item_id" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="quantity">數量：</label>
+                    <input type="number" id="quantity" name="quantity" class="form-control" min="1" max="32767" value="1">
+                </div>
+                <div class="form-group">
+                    <label for="data_value">Data值：</label>
+                    <input type="text" id="data_value" name="data_value" class="form-control" placeholder="">
+                </div>
+                <div id="can_place_on_input" class="form-group hidden">
+                    <label for="can_place_on">可放置於：</label>
+                    <input type="text" id="can_place_on" name="can_place_on" class="form-control" placeholder="Block ID 1,Block ID 2,...">
+                </div>
+                <div id="can_destroy_input" class="form-group hidden">
+                    <label for="can_destroy">可破壞：</label>
+                    <input type="text" id="can_destroy" name="can_destroy" class="form-control" placeholder="Block ID 1,Block ID 2,...">
+                </div>
+                <div id="item_lock_mode_input" class="form-group">
+                    <label for="item_lock_mode">物品鎖定模式：</label>
+                    <select id="item_lock_mode" name="item_lock_mode" class="form-select">
+                        <option value=""></option>
+                        <option value="lock_in_inventory">Lock in Inventory</option>
+                        <option value="lock_in_slot">Lock in Slot</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="keep_on_death">死亡時保留：</label>
+                    <select id="keep_on_death" name="keep_on_death" class="form-select">
+                        <option value=""></option>
+                        <option value="true">是</option>
+                        <option value="false">否</option>
+                    </select>
+                </div>
+                <button type="button" class="btn btn-primary" onclick="generateGiveCommand()">生成Give指令</button>
+                <div class="mt-3">
+                    <label class="form-label">生成的Give指令 (點擊複製):</label>
+                    <pre id="generated_command" onclick="copyGiveCommand()"></pre>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Include Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function generateCommand() {
+            var selector = document.getElementById("selector").value;
+            var type = document.getElementById("type").value;
+            var showElement = document.getElementById("show-element").value;
+
+            var command;
+            if (type) {
+                command = `/titleraw ${selector} ${type} {"rawtext":[${showElement}]}`;
+            } else {
+                command = `/tellraw ${selector} {"rawtext":[${showElement}]}`;
+            }
+            document.getElementById("preview").textContent = command;
+        }
+
+        function clearFields() {
+            document.getElementById("selector").value = "@a";
+            document.getElementById("type").value = "";
+            document.getElementById("show-element").value = "";
+            document.getElementById("example-select").value = "";
+            document.getElementById("preview").textContent = "";
+        }
+
+        function loadExample() {
+            var exampleSelect = document.getElementById("example-select");
+            var selectedExample = exampleSelect.options[exampleSelect.selectedIndex].value;
+            document.getElementById("show-element").value = selectedExample;
+        }
+
+        function copyToClipboard() {
+            var previewText = document.getElementById("preview").textContent;
+            navigator.clipboard.writeText(previewText).then(function () {
+                alert("指令已複製到剪貼板");
+            }, function (err) {
+                alert("無法複製指令: ", err);
+            });
+        }
+
+        function generateGiveCommand() {
+            const targetSelector = document.getElementById('target_selector').value;
+            const itemID = document.getElementById('item_id').value;
+            const quantity = document.getElementById('quantity').value;
+            const dataValue = document.getElementById('data_value').value;
+            const canPlaceOn = document.getElementById('can_place_on').value.trim().split(',');
+            const canDestroy = document.getElementById('can_destroy').value.trim().split(',');
+            const itemLockMode = document.getElementById('item_lock_mode').value;
+            const keepOnDeath = document.getElementById('keep_on_death').value;
+
+            let components = '';
+            if (canPlaceOn[0]) {
+                const canPlaceOnComponent = `"minecraft:can_place_on": { "blocks": [${canPlaceOn.map(block => `"${block.trim()}"`).join(', ')}] }`;
+                components += `${canPlaceOnComponent}, `;
+            }
+            if (canDestroy[0]) {
+                const canDestroyComponent = `"minecraft:can_destroy": { "blocks": [${canDestroy.map(block => `"${block.trim()}"`).join(', ')}] }`;
+                components += `${canDestroyComponent}, `;
+            }
+            if (itemLockMode) {
+                const itemLockComponent = `"minecraft:item_lock": { "mode": "${itemLockMode}" }`;
+                components += `${itemLockComponent}, `;
+            }
+            if (keepOnDeath) {
+                const keepOnDeathComponent = `"minecraft:keep_on_death": {}`;
+                components += `${keepOnDeathComponent}, `;
+            }
+            components = components.slice(0, -2);
+
+            let giveCommand = `/give ${targetSelector} ${itemID} ${quantity}`;
+            if (dataValue) {
+                giveCommand += ` ${dataValue}`;
+            }
+            if (components) {
+                giveCommand += ` {${components}}`;
+            }
+            document.getElementById("generated_command").textContent = giveCommand;
+        }
+
+        function copyGiveCommand() {
+            var commandText = document.getElementById("generated_command").textContent;
+            navigator.clipboard.writeText(commandText).then(function () {
+                alert("指令已複製到剪貼板");
+            }, function (err) {
+                alert("無法複製指令: ", err);
+            });
+        }
+    </script>
+</body>
+
+</html>
